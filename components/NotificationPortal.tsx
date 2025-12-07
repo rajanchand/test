@@ -1,16 +1,16 @@
 
-import React, { useState, useEffect } from 'react';
-import { NotificationData, Role } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { NotificationData, Role, User } from '../types';
 import { db } from '../services/database';
-import { Bell, AlertTriangle, CheckCircle, Clock, Trash2, Download, Plus, X, Wand2, Edit, FileSpreadsheet, UserCheck } from 'lucide-react';
+import { Bell, AlertTriangle, CheckCircle, Clock, Trash2, Download, Plus, X, Wand2, Edit, FileSpreadsheet, UserCheck, MapPin } from 'lucide-react';
 import { generateNotificationDraft } from '../services/geminiService';
 
 interface NotificationPortalProps {
-  userRole: Role;
+  currentUser: User;
   canCreate: boolean;
 }
 
-const NotificationPortal: React.FC<NotificationPortalProps> = ({ userRole, canCreate }) => {
+const NotificationPortal: React.FC<NotificationPortalProps> = ({ currentUser, canCreate }) => {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -21,9 +21,19 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ userRole, canCr
     setNotifications(db.getNotifications());
   }, []);
 
+  // Filter based on User Region
+  const filteredNotifications = useMemo(() => {
+     if (!currentUser.region || currentUser.region === 'All') {
+         return notifications;
+     }
+     // Show global alerts (no region) + matching region
+     return notifications.filter(n => !n.region || n.region === currentUser.region);
+  }, [notifications, currentUser.region]);
+
   // Form State
   const [formData, setFormData] = useState<any>({
     title: '',
+    region: currentUser.region !== 'All' ? currentUser.region : 'Kathmandu', // Default
     mastersDownCount: 0,
     affectedMasters: '',
     oltsDownCount: 0,
@@ -36,7 +46,9 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ userRole, canCr
 
   const resetForm = () => {
     setFormData({
-      title: '', mastersDownCount: 0, affectedMasters: '', oltsDownCount: 0, 
+      title: '', 
+      region: currentUser.region !== 'All' ? currentUser.region : 'Kathmandu',
+      mastersDownCount: 0, affectedMasters: '', oltsDownCount: 0, 
       downOltsList: '', impactedCustomers: 0, reason: '', estimatedTime: '', status: 'WARNING'
     });
     setEditingId(null);
@@ -52,6 +64,7 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ userRole, canCr
   const handleEdit = (n: NotificationData) => {
     setFormData({
       title: n.title,
+      region: n.region || (currentUser.region !== 'All' ? currentUser.region : 'Kathmandu'),
       mastersDownCount: n.mastersDownCount,
       affectedMasters: n.affectedMasters.join(', '),
       oltsDownCount: n.oltsDownCount,
@@ -72,16 +85,17 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ userRole, canCr
   const handleExportLogs = () => {
     // Generate CSV Header
     const headers = [
-      "Notification ID", "Title / Area", "Current Status", 
+      "Notification ID", "Title", "Region", "Current Status", 
       "Investigation Started (Down Time)", "Maintenance Started", 
       "Resolved Time", "Masters Down", "OLTs Down", 
       "Impacted Customers", "Reason", "Notified Staff"
     ];
 
     // Generate CSV Rows
-    const rows = notifications.map(n => [
+    const rows = filteredNotifications.map(n => [
       n.id,
       `"${n.title.replace(/"/g, '""')}"`, // Escape quotes
+      n.region || 'General',
       n.status,
       `"${n.alertTime}"`,
       `"${n.maintenanceStartTime || 'N/A'}"`,
@@ -171,6 +185,7 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ userRole, canCr
       notificationToSave = {
         ...existing,
         title: formData.title,
+        region: formData.region,
         mastersDownCount: Number(formData.mastersDownCount),
         affectedMasters: affectedMastersArray,
         oltsDownCount: Number(formData.oltsDownCount),
@@ -187,6 +202,7 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ userRole, canCr
       notificationToSave = {
         id: Date.now().toString(),
         title: formData.title || 'Untitled Outage',
+        region: formData.region,
         mastersDownCount: Number(formData.mastersDownCount),
         affectedMasters: affectedMastersArray,
         oltsDownCount: Number(formData.oltsDownCount),
@@ -196,7 +212,7 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ userRole, canCr
         estimatedTime: formData.estimatedTime || 'Unknown',
         alertTime: now,
         status: (formData.status as any) || 'WARNING',
-        createdBy: userRole === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin',
+        createdBy: currentUser.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin',
         notifiedPersons: notifiedList
       };
     }
@@ -223,7 +239,14 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ userRole, canCr
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">System Notifications</h1>
-          <p className="text-gray-500 text-sm mt-1">Live updates on network status and downtime</p>
+          <div className="flex items-center gap-2">
+            <p className="text-gray-500 text-sm mt-1">Live updates on network status and downtime</p>
+            {currentUser.region && currentUser.region !== 'All' && (
+                <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full border border-red-200">
+                    Region: {currentUser.region}
+                </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
            {/* Export Logs Button for Admin/Super Admin */}
@@ -234,7 +257,7 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ userRole, canCr
               title="Download All Logs to CSV"
             >
               <FileSpreadsheet className="w-4 h-4" />
-              Export Master Log
+              Export Log
             </button>
            )}
            {canCreate && (
@@ -261,10 +284,27 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ userRole, canCr
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Alert Title / Area</label>
+                <div className="col-span-2 md:col-span-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Alert Title</label>
                   <input required type="text" className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-red-500 outline-none" 
-                    value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="e.g. Fiber Cut in Bhaktapur" />
+                    value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="e.g. Fiber Cut" />
+                </div>
+
+                <div className="col-span-2 md:col-span-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Region</label>
+                  <select 
+                    className={`w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-red-500 outline-none ${currentUser.region !== 'All' ? 'bg-gray-100' : ''}`}
+                    value={formData.region}
+                    onChange={e => setFormData({...formData, region: e.target.value})}
+                    disabled={currentUser.region !== 'All'} // Lock for regional users
+                  >
+                    <option value="Kathmandu">Kathmandu</option>
+                    <option value="Lalitpur">Lalitpur</option>
+                    <option value="Bhaktapur">Bhaktapur</option>
+                    <option value="Pokhara">Pokhara</option>
+                    <option value="Chitwan">Chitwan</option>
+                    <option value="Butwal">Butwal</option>
+                  </select>
                 </div>
 
                 <div>
@@ -377,7 +417,7 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ userRole, canCr
 
       {/* Notification List */}
       <div className="grid gap-6">
-        {notifications.map((notification) => (
+        {filteredNotifications.map((notification) => (
           <div key={notification.id} className={`relative bg-white rounded-xl shadow-sm border-l-4 overflow-hidden transition-all hover:shadow-md ${
             notification.status === 'WARNING' ? 'border-red-500' : 
             notification.status === 'RUNNING' ? 'border-yellow-500' : 'border-green-500'
@@ -395,6 +435,11 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ userRole, canCr
                   <div>
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       <h3 className="text-lg font-bold text-gray-800">{notification.title}</h3>
+                      {notification.region && (
+                        <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200 flex items-center gap-1">
+                             <MapPin className="w-3 h-3" /> {notification.region}
+                        </span>
+                      )}
                       <span className={`text-xs px-2 py-0.5 rounded border ${
                         notification.status === 'WARNING' ? 'bg-red-50 border-red-200 text-red-700' : 
                         notification.status === 'RUNNING' ? 'bg-yellow-50 border-yellow-200 text-yellow-700' : 'bg-green-50 border-green-200 text-green-700'
@@ -483,10 +528,10 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ userRole, canCr
           </div>
         ))}
 
-        {notifications.length === 0 && (
+        {filteredNotifications.length === 0 && (
           <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
             <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="text-gray-500 font-medium">No active notifications</h3>
+            <h3 className="text-gray-500 font-medium">No active notifications for {currentUser.region && currentUser.region !== 'All' ? currentUser.region : 'all regions'}</h3>
             <p className="text-gray-400 text-sm">Everything is running smoothly.</p>
           </div>
         )}

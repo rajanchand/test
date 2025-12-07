@@ -7,6 +7,7 @@ export const MOCK_USERS: User[] = [
     name: 'Super Admin',
     email: 'admin@dishhome.com.np',
     role: 'SUPER_ADMIN',
+    region: 'All',
     lastLogin: '2023-10-27 10:30 AM',
     active: true,
     permissions: {
@@ -15,13 +16,15 @@ export const MOCK_USERS: User[] = [
       canManageUsers: true,
       canCreateNotifications: true,
       canManageOLTs: true,
+      canExportData: true,
     },
   },
   {
     id: 'u2',
-    name: 'Network Engineer',
+    name: 'Network Engineer (KTM)',
     email: 'engineer@dishhome.com.np',
     role: 'ADMIN',
+    region: 'Kathmandu',
     lastLogin: '2023-10-26 09:15 AM',
     active: true,
     permissions: {
@@ -30,13 +33,15 @@ export const MOCK_USERS: User[] = [
       canManageUsers: false,
       canCreateNotifications: true,
       canManageOLTs: true,
+      canExportData: true,
     },
   },
   {
     id: 'u3',
-    name: 'Support Staff',
+    name: 'Support Staff (PKR)',
     email: 'support@dishhome.com.np',
     role: 'USER',
+    region: 'Pokhara',
     lastLogin: '2023-10-27 08:00 AM',
     active: true,
     permissions: {
@@ -45,6 +50,7 @@ export const MOCK_USERS: User[] = [
       canManageUsers: false,
       canCreateNotifications: false,
       canManageOLTs: false,
+      canExportData: false,
     },
   },
 ];
@@ -108,6 +114,7 @@ export const INITIAL_NOTIFICATIONS: NotificationData[] = [
   {
     id: 'n1',
     title: 'Major Fiber Cut - Bhaktapur Area',
+    region: 'Bhaktapur',
     mastersDownCount: 1,
     affectedMasters: ['BKT-Core-01'],
     oltsDownCount: 3,
@@ -122,6 +129,7 @@ export const INITIAL_NOTIFICATIONS: NotificationData[] = [
   {
     id: 'n2',
     title: 'Scheduled Maintenance - Lalitpur',
+    region: 'Lalitpur',
     mastersDownCount: 0,
     affectedMasters: [],
     oltsDownCount: 1,

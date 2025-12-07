@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, Role } from '../types';
 import { db } from '../services/database';
-import { User as UserIcon, Shield, Clock, Edit2, Trash2, Plus, X } from 'lucide-react';
+import { User as UserIcon, Shield, Clock, Edit2, Trash2, Plus, X, Globe } from 'lucide-react';
 
 interface AdminPortalProps {
   currentUser: User;
@@ -10,9 +11,9 @@ interface AdminPortalProps {
 const AdminPortal: React.FC<AdminPortalProps> = ({ currentUser }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // Simple state for the form - in a real app this would be more robust
+  
   const [newUser, setNewUser] = useState<Partial<User>>({
-    name: '', email: '', role: 'USER', active: true
+    name: '', email: '', role: 'USER', active: true, region: 'All'
   });
 
   useEffect(() => {
@@ -48,6 +49,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ currentUser }) => {
         name: newUser.name!,
         email: newUser.email!,
         role: newUser.role as Role,
+        region: newUser.region || 'All',
         lastLogin: 'Never',
         active: true,
         permissions: {
@@ -56,13 +58,14 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ currentUser }) => {
             canManageUsers: newUser.role === 'SUPER_ADMIN' || newUser.role === 'ADMIN',
             canCreateNotifications: newUser.role === 'SUPER_ADMIN' || newUser.role === 'ADMIN',
             canManageOLTs: newUser.role === 'SUPER_ADMIN' || newUser.role === 'ADMIN',
+            canExportData: newUser.role === 'SUPER_ADMIN',
         }
     };
     
     const updated = db.saveUser(u);
     setUsers(updated);
     setIsModalOpen(false);
-    setNewUser({ name: '', email: '', role: 'USER', active: true });
+    setNewUser({ name: '', email: '', role: 'USER', active: true, region: 'All' });
   };
 
   return (
@@ -70,7 +73,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ currentUser }) => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage system access and permissions</p>
+          <p className="text-gray-500 text-sm mt-1">Manage system access, roles, and regional permissions</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
@@ -87,6 +90,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ currentUser }) => {
               <tr>
                 <th className="px-6 py-4">User</th>
                 <th className="px-6 py-4">Role</th>
+                <th className="px-6 py-4">Assigned Region</th>
                 <th className="px-6 py-4">Last Login</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4 text-right">Actions</th>
@@ -114,6 +118,12 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ currentUser }) => {
                       {user.role.replace('_', ' ')}
                     </span>
                   </td>
+                  <td className="px-6 py-4">
+                     <span className="inline-flex items-center gap-1 text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-200">
+                        <Globe className="w-3 h-3" />
+                        {user.region || 'All Regions'}
+                     </span>
+                  </td>
                   <td className="px-6 py-4 text-gray-500">
                     <div className="flex items-center gap-2">
                       <Clock className="w-3 h-3" />
@@ -126,12 +136,12 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ currentUser }) => {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                       <button className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                       <button className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors" title="Edit Permissions">
                          <Edit2 className="w-4 h-4" />
                        </button>
                        <button 
                         onClick={() => handleDelete(user.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+                        className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors" title="Remove User">
                          <Trash2 className="w-4 h-4" />
                        </button>
                     </div>
@@ -162,15 +172,43 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ currentUser }) => {
                   <input required type="email" className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:border-red-500"
                     value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
                </div>
-               <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                  <select className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:border-red-500"
-                    value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as Role})}>
-                    <option value="USER">User</option>
-                    <option value="ADMIN">Admin</option>
-                    <option value="SUPER_ADMIN">Super Admin</option>
-                  </select>
+               <div className="grid grid-cols-2 gap-4">
+                  <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                      <select className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:border-red-500"
+                        value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as Role})}>
+                        <option value="USER">User</option>
+                        <option value="ADMIN">Admin</option>
+                        <option value="SUPER_ADMIN">Super Admin</option>
+                      </select>
+                  </div>
+                  <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Region Access</label>
+                      <select className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:border-red-500"
+                        value={newUser.region} onChange={e => setNewUser({...newUser, region: e.target.value})}>
+                        <option value="All">All Regions</option>
+                        <option value="Kathmandu">Kathmandu</option>
+                        <option value="Lalitpur">Lalitpur</option>
+                        <option value="Bhaktapur">Bhaktapur</option>
+                        <option value="Pokhara">Pokhara</option>
+                        <option value="Chitwan">Chitwan</option>
+                        <option value="Butwal">Butwal</option>
+                      </select>
+                  </div>
                </div>
+               
+               <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-500">
+                  <p className="font-semibold mb-1">Permissions Preview:</p>
+                  <ul className="list-disc pl-4 space-y-1">
+                      <li>Dashboard Access: Yes</li>
+                      <li>Notification Access: Yes</li>
+                      <li>Manage OLTs: {newUser.role === 'USER' ? 'No' : 'Yes'}</li>
+                      <li>Create Alerts: {newUser.role === 'USER' ? 'No' : 'Yes'}</li>
+                      <li>Manage Users: {newUser.role === 'SUPER_ADMIN' || newUser.role === 'ADMIN' ? 'Yes' : 'No'}</li>
+                      <li>Region Scope: {newUser.region === 'All' ? 'Global' : newUser.region}</li>
+                  </ul>
+               </div>
+
                <button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-medium transition-colors">
                  Create Account
                </button>

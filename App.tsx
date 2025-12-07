@@ -75,9 +75,12 @@ const App: React.FC = () => {
             </form>
             
             <div className="mt-6 pt-6 border-t border-gray-100 text-center text-xs text-gray-400">
-              <p>Demo accounts:</p>
-              <p>admin@dishhome.com.np (Admin)</p>
-              <p>support@dishhome.com.np (User)</p>
+              <p className="font-semibold text-gray-500 mb-1">Demo accounts:</p>
+              <div className="space-y-1">
+                <p>admin@dishhome.com.np <span className="text-xs text-gray-300">(Admin, Global)</span></p>
+                <p>engineer@dishhome.com.np <span className="text-xs text-gray-300">(Admin, Kathmandu)</span></p>
+                <p>support@dishhome.com.np <span className="text-xs text-gray-300">(User, Pokhara)</span></p>
+              </div>
             </div>
           </div>
         </div>
@@ -113,18 +116,18 @@ const App: React.FC = () => {
         {/* Main Content Scrollable Area */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="max-w-7xl mx-auto">
-            {activeTab === 'dashboard' && <DashboardPortal />}
+            {activeTab === 'dashboard' && <DashboardPortal currentUser={user} />}
             
             {activeTab === 'notifications' && (
               <NotificationPortal 
-                userRole={user.role} 
+                currentUser={user} 
                 canCreate={!!user.permissions.canCreateNotifications} 
               />
             )}
 
             {activeTab === 'olt-details' && (
               <OLTDetailsPortal
-                userRole={user.role}
+                currentUser={user}
                 canManage={!!user.permissions.canManageOLTs}
               />
             )}

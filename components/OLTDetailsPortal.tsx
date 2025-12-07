@@ -1,15 +1,15 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { OLTDetail, Role } from '../types';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { OLTDetail, User } from '../types';
 import { db } from '../services/database';
-import { Search, Database, Plus, Upload, Trash2, FileSpreadsheet, X, Download, Edit } from 'lucide-react';
+import { Search, Database, Plus, Upload, Trash2, FileSpreadsheet, X, Download, Edit, MapPin } from 'lucide-react';
 
 interface OLTDetailsPortalProps {
-  userRole: Role;
+  currentUser: User;
   canManage: boolean;
 }
 
-const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ userRole, canManage }) => {
+const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ currentUser, canManage }) => {
   const [olts, setOlts] = useState<OLTDetail[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -20,6 +20,14 @@ const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ userRole, canManage
     setOlts(db.getOLTs());
   }, []);
 
+  // Filter based on User Region
+  const regionFilteredOLTs = useMemo(() => {
+      if (!currentUser.region || currentUser.region === 'All') {
+          return olts;
+      }
+      return olts.filter(o => o.region === currentUser.region);
+  }, [olts, currentUser.region]);
+
   // Form State
   const [formData, setFormData] = useState<Partial<OLTDetail>>({
     vendorName: '',
@@ -27,12 +35,12 @@ const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ userRole, canManage
     oltCode: '',
     masterName: '',
     responsiblePerson: '',
-    region: '',
+    region: currentUser.region !== 'All' ? currentUser.region : 'Kathmandu',
     status: 'ACTIVE'
   });
 
-  // Filter Logic
-  const filteredOLTs = olts.filter(olt => 
+  // Filter Logic (Search + Region)
+  const filteredOLTs = regionFilteredOLTs.filter(olt => 
     olt.oltCode.toLowerCase().includes(searchTerm.toLowerCase()) || 
     olt.masterName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     olt.region.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -63,12 +71,20 @@ const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ userRole, canManage
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingId(null);
-    setFormData({ vendorName: '', podName: '', oltCode: '', masterName: '', responsiblePerson: '', region: '', status: 'ACTIVE' });
+    setFormData({ 
+        vendorName: '', podName: '', oltCode: '', masterName: '', responsiblePerson: '', 
+        region: currentUser.region !== 'All' ? currentUser.region : 'Kathmandu', 
+        status: 'ACTIVE' 
+    });
   };
 
   const openAddModal = () => {
     setEditingId(null);
-    setFormData({ vendorName: '', podName: '', oltCode: '', masterName: '', responsiblePerson: '', region: '', status: 'ACTIVE' });
+    setFormData({ 
+        vendorName: '', podName: '', oltCode: '', masterName: '', responsiblePerson: '', 
+        region: currentUser.region !== 'All' ? currentUser.region : 'Kathmandu', 
+        status: 'ACTIVE' 
+    });
     setIsModalOpen(true);
   };
 
@@ -134,6 +150,14 @@ const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ userRole, canManage
 
         const cols = cleanLine.split(',');
         if (cols.length >= 6) {
+          const importedRegion = cols[5].trim();
+          
+          // Security check: Don't allow importing data for other regions if user is restricted
+          if (currentUser.region && currentUser.region !== 'All' && importedRegion !== currentUser.region) {
+              console.warn(`Skipping record for ${importedRegion} due to permission restrictions.`);
+              return; 
+          }
+
           newEntries.push({
             id: `csv_${Date.now()}_${index}`,
             vendorName: cols[0].trim(),
@@ -141,7 +165,7 @@ const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ userRole, canManage
             oltCode: cols[2].trim(),
             masterName: cols[3].trim(),
             responsiblePerson: cols[4].trim(),
-            region: cols[5].trim(),
+            region: importedRegion,
             status: 'ACTIVE', // Default status for bulk import
             addedAt: new Date().toISOString().split('T')[0]
           });
@@ -153,7 +177,7 @@ const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ userRole, canManage
         setOlts(updated);
         alert(`Successfully imported ${newEntries.length} records from CSV.`);
       } else {
-        alert("No valid records found or CSV format is incorrect. Expected format: Vendor, POD Name, OLT Code, Master Name, Responsible Person, Region");
+        alert("No valid records found or CSV format is incorrect (or permission denied for regions). Expected format: Vendor, POD Name, OLT Code, Master Name, Responsible Person, Region");
       }
       
       // Reset input
@@ -187,7 +211,14 @@ const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ userRole, canManage
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">OLT Details Database</h1>
-          <p className="text-gray-500 text-sm mt-1">Master inventory of Optical Line Terminals</p>
+          <div className="flex items-center gap-2">
+            <p className="text-gray-500 text-sm mt-1">Master inventory of Optical Line Terminals</p>
+             {currentUser.region && currentUser.region !== 'All' && (
+                <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full border border-red-200">
+                    Region: {currentUser.region}
+                </span>
+            )}
+          </div>
         </div>
         
         {canManage && (
@@ -339,8 +370,12 @@ const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ userRole, canManage
                 </div>
                 <div>
                    <label className="block text-sm font-medium text-gray-700 mb-1">Region</label>
-                   <select className="w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-red-500"
-                     value={formData.region} onChange={e => setFormData({...formData, region: e.target.value})}>
+                   <select 
+                     className={`w-full border border-gray-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-red-500 ${currentUser.region !== 'All' ? 'bg-gray-100' : ''}`}
+                     value={formData.region} 
+                     onChange={e => setFormData({...formData, region: e.target.value})}
+                     disabled={currentUser.region !== 'All'} // Lock region for restricted users
+                   >
                      <option value="">Select Region</option>
                      <option value="Kathmandu">Kathmandu</option>
                      <option value="Lalitpur">Lalitpur</option>
@@ -348,7 +383,6 @@ const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ userRole, canManage
                      <option value="Pokhara">Pokhara</option>
                      <option value="Chitwan">Chitwan</option>
                      <option value="Butwal">Butwal</option>
-
                      <option value="Other">Other</option>
                    </select>
                 </div>

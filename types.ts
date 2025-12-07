@@ -6,6 +6,7 @@ export interface User {
   name: string;
   email: string;
   role: Role;
+  region?: string; // 'All', 'Kathmandu', 'Pokhara', etc.
   lastLogin: string;
   active: boolean;
   permissions: {
@@ -14,12 +15,14 @@ export interface User {
     canManageUsers?: boolean;
     canCreateNotifications?: boolean;
     canManageOLTs?: boolean;
+    canExportData?: boolean; // Added granular permission
   };
 }
 
 export interface NotificationData {
   id: string;
   title: string;
+  region?: string; // Region associated with the alert
   mastersDownCount: number;
   affectedMasters: string[]; // Comma separated names
   oltsDownCount: number;
