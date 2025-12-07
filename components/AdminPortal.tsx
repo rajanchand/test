@@ -20,7 +20,7 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ currentUser }) => {
     setUsers(db.getUsers());
   }, []);
 
-  if (currentUser.role === 'USER') {
+  if (!currentUser.permissions.canManageUsers) {
     return (
       <div className="flex items-center justify-center h-[50vh] text-gray-500 flex-col">
         <Shield className="w-16 h-16 text-gray-300 mb-4" />
@@ -43,7 +43,11 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ currentUser }) => {
 
   const handleSaveUser = (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate ID gen
+    
+    // Define default permissions based on Role
+    const isSuper = newUser.role === 'SUPER_ADMIN';
+    const isAdmin = newUser.role === 'ADMIN';
+    
     const u: User = {
         id: `u${Date.now()}`,
         name: newUser.name!,
@@ -55,10 +59,21 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ currentUser }) => {
         permissions: {
             canViewDashboard: true,
             canViewNotifications: true,
-            canManageUsers: newUser.role === 'SUPER_ADMIN' || newUser.role === 'ADMIN',
-            canCreateNotifications: newUser.role === 'SUPER_ADMIN' || newUser.role === 'ADMIN',
-            canManageOLTs: newUser.role === 'SUPER_ADMIN' || newUser.role === 'ADMIN',
-            canExportData: newUser.role === 'SUPER_ADMIN',
+            
+            // Notification Mgmt
+            canCreateNotifications: isSuper || isAdmin,
+            canDeleteNotifications: isSuper,
+            
+            // OLT Mgmt
+            canViewOLTs: true,
+            canCreateOLTs: isSuper || isAdmin,
+            canEditOLTs: isSuper || isAdmin,
+            canDeleteOLTs: isSuper,
+            canImportData: isSuper || isAdmin,
+            
+            // System Mgmt
+            canExportData: isSuper || isAdmin,
+            canManageUsers: isSuper,
         }
     };
     
@@ -136,9 +151,6 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ currentUser }) => {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                       <button className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors" title="Edit Permissions">
-                         <Edit2 className="w-4 h-4" />
-                       </button>
                        <button 
                         onClick={() => handleDelete(user.id)}
                         className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors" title="Remove User">
@@ -177,8 +189,8 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ currentUser }) => {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                       <select className="w-full border border-gray-300 rounded-lg p-2 outline-none focus:border-red-500"
                         value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as Role})}>
-                        <option value="USER">User</option>
-                        <option value="ADMIN">Admin</option>
+                        <option value="USER">User (Read Only)</option>
+                        <option value="ADMIN">Admin (Regional)</option>
                         <option value="SUPER_ADMIN">Super Admin</option>
                       </select>
                   </div>
@@ -198,14 +210,14 @@ const AdminPortal: React.FC<AdminPortalProps> = ({ currentUser }) => {
                </div>
                
                <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-500">
-                  <p className="font-semibold mb-1">Permissions Preview:</p>
+                  <p className="font-semibold mb-1">Assigned Permissions:</p>
                   <ul className="list-disc pl-4 space-y-1">
-                      <li>Dashboard Access: Yes</li>
-                      <li>Notification Access: Yes</li>
-                      <li>Manage OLTs: {newUser.role === 'USER' ? 'No' : 'Yes'}</li>
+                      <li>Dashboard: Yes</li>
+                      <li>View OLTs: Yes (Scoped to Region)</li>
                       <li>Create Alerts: {newUser.role === 'USER' ? 'No' : 'Yes'}</li>
-                      <li>Manage Users: {newUser.role === 'SUPER_ADMIN' || newUser.role === 'ADMIN' ? 'Yes' : 'No'}</li>
-                      <li>Region Scope: {newUser.region === 'All' ? 'Global' : newUser.region}</li>
+                      <li>Edit Data: {newUser.role === 'USER' ? 'No' : 'Yes'}</li>
+                      <li>Delete Records: {newUser.role === 'SUPER_ADMIN' ? 'Yes' : 'No'}</li>
+                      <li>Manage Users: {newUser.role === 'SUPER_ADMIN' ? 'Yes' : 'No'}</li>
                   </ul>
                </div>
 

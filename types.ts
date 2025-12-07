@@ -12,10 +12,15 @@ export interface User {
   permissions: {
     canViewDashboard: boolean;
     canViewNotifications: boolean;
-    canManageUsers?: boolean;
-    canCreateNotifications?: boolean;
-    canManageOLTs?: boolean;
-    canExportData?: boolean; // Added granular permission
+    canCreateNotifications: boolean;
+    canDeleteNotifications: boolean;
+    canViewOLTs: boolean;
+    canCreateOLTs: boolean;
+    canEditOLTs: boolean;
+    canDeleteOLTs: boolean;
+    canImportData: boolean;
+    canExportData: boolean;
+    canManageUsers: boolean;
   };
 }
 

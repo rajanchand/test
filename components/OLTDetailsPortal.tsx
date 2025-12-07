@@ -6,15 +6,16 @@ import { Search, Database, Plus, Upload, Trash2, FileSpreadsheet, X, Download, E
 
 interface OLTDetailsPortalProps {
   currentUser: User;
-  canManage: boolean;
 }
 
-const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ currentUser, canManage }) => {
+const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ currentUser }) => {
   const [olts, setOlts] = useState<OLTDetail[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { canCreateOLTs, canEditOLTs, canDeleteOLTs, canImportData } = currentUser.permissions;
 
   useEffect(() => {
     setOlts(db.getOLTs());
@@ -221,29 +222,33 @@ const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ currentUser, canMan
           </div>
         </div>
         
-        {canManage && (
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={downloadTemplate}
-              className="hidden md:flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 px-3 py-2"
-              title="Download CSV Template"
-            >
-                <Download className="w-4 h-4" /> Template
-            </button>
-            <input 
-              type="file" 
-              accept=".csv" 
-              ref={fileInputRef}
-              onChange={handleCSVUpload} 
-              className="hidden" 
-            />
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
-            >
-              <Upload className="w-4 h-4" />
-              Import CSV
-            </button>
+        <div className="flex items-center gap-3">
+          {canImportData && (
+             <>
+                <button 
+                  onClick={downloadTemplate}
+                  className="hidden md:flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 px-3 py-2"
+                  title="Download CSV Template"
+                >
+                    <Download className="w-4 h-4" /> Template
+                </button>
+                <input 
+                  type="file" 
+                  accept=".csv" 
+                  ref={fileInputRef}
+                  onChange={handleCSVUpload} 
+                  className="hidden" 
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
+                >
+                  <Upload className="w-4 h-4" />
+                  Import CSV
+                </button>
+             </>
+          )}
+          {canCreateOLTs && (
             <button 
               onClick={openAddModal}
               className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg transition-colors shadow-sm"
@@ -251,8 +256,8 @@ const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ currentUser, canMan
               <Plus className="w-4 h-4" />
               Add OLT
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Search Bar */}
@@ -281,7 +286,7 @@ const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ currentUser, canMan
                 <th className="px-6 py-4">POD Name</th>
                 <th className="px-6 py-4">Vendor</th>
                 <th className="px-6 py-4">Responsible Person</th>
-                {canManage && <th className="px-6 py-4 text-right">Actions</th>}
+                {(canEditOLTs || canDeleteOLTs) && <th className="px-6 py-4 text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -313,23 +318,27 @@ const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ currentUser, canMan
                       {olt.responsiblePerson}
                     </div>
                   </td>
-                  {canManage && (
+                  {(canEditOLTs || canDeleteOLTs) && (
                     <td className="px-6 py-4 text-right">
                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                         <button 
-                          onClick={() => handleEdit(olt)}
-                          className="p-2 text-gray-400 hover:text-green-600 rounded-lg hover:bg-green-50 transition-colors"
-                          title="Edit Record"
-                         >
-                           <Edit className="w-4 h-4" />
-                         </button>
-                         <button 
-                          onClick={() => handleDelete(olt.id)}
-                          className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                          title="Delete Record"
-                         >
-                           <Trash2 className="w-4 h-4" />
-                         </button>
+                         {canEditOLTs && (
+                            <button 
+                              onClick={() => handleEdit(olt)}
+                              className="p-2 text-gray-400 hover:text-green-600 rounded-lg hover:bg-green-50 transition-colors"
+                              title="Edit Record"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                         )}
+                         {canDeleteOLTs && (
+                            <button 
+                              onClick={() => handleDelete(olt.id)}
+                              className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                              title="Delete Record"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                         )}
                        </div>
                     </td>
                   )}
@@ -337,10 +346,10 @@ const OLTDetailsPortal: React.FC<OLTDetailsPortalProps> = ({ currentUser, canMan
               ))}
               {filteredOLTs.length === 0 && (
                  <tr>
-                    <td colSpan={canManage ? 7 : 6} className="px-6 py-12 text-center text-gray-400">
+                    <td colSpan={(canEditOLTs || canDeleteOLTs) ? 7 : 6} className="px-6 py-12 text-center text-gray-400">
                        <FileSpreadsheet className="w-12 h-12 mx-auto mb-3 text-gray-200" />
                        <p>No OLT records found matching your search.</p>
-                       {canManage && <p className="text-xs mt-2">Try importing a CSV file or adding a new record.</p>}
+                       {canImportData && <p className="text-xs mt-2">Try importing a CSV file or adding a new record.</p>}
                     </td>
                  </tr>
               )}

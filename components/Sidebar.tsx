@@ -16,9 +16,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home, visible: user.permissions.canViewDashboard },
     { id: 'notifications', label: 'Notifications', icon: Bell, visible: user.permissions.canViewNotifications },
-    { id: 'olt-details', label: 'OLT Details', icon: Database, visible: true }, // Available to all authenticated users
+    { id: 'olt-details', label: 'OLT Details', icon: Database, visible: user.permissions.canViewOLTs }, 
     { id: 'admin', label: 'Admin Management', icon: Settings, visible: user.permissions.canManageUsers },
-    { id: 'database', label: 'System Database', icon: HardDrive, visible: user.permissions.canManageUsers }, // Admin/Super Admin only
+    { id: 'database', label: 'System Database', icon: HardDrive, visible: user.permissions.canManageUsers }, 
   ];
 
   const handleNav = (id: string) => {
@@ -74,7 +74,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, user, onLogo
               </div>
               <div className="overflow-hidden">
                 <p className="text-sm font-medium text-white truncate">{user.name}</p>
-                <p className="text-xs text-gray-500 truncate capitalize">{user.role.replace('_', ' ').toLowerCase()}</p>
+                <div className="flex items-center gap-1">
+                   <p className="text-xs text-gray-500 truncate capitalize">{user.role.replace('_', ' ').toLowerCase()}</p>
+                   {user.region && user.region !== 'All' && (
+                       <span className="text-[10px] bg-gray-700 px-1 rounded text-gray-300">{user.region}</span>
+                   )}
+                </div>
               </div>
             </div>
             <button 

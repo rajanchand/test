@@ -120,15 +120,13 @@ const App: React.FC = () => {
             
             {activeTab === 'notifications' && (
               <NotificationPortal 
-                currentUser={user} 
-                canCreate={!!user.permissions.canCreateNotifications} 
+                currentUser={user}
               />
             )}
 
             {activeTab === 'olt-details' && (
               <OLTDetailsPortal
                 currentUser={user}
-                canManage={!!user.permissions.canManageOLTs}
               />
             )}
             

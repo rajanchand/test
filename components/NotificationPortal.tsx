@@ -7,14 +7,15 @@ import { generateNotificationDraft } from '../services/geminiService';
 
 interface NotificationPortalProps {
   currentUser: User;
-  canCreate: boolean;
 }
 
-const NotificationPortal: React.FC<NotificationPortalProps> = ({ currentUser, canCreate }) => {
+const NotificationPortal: React.FC<NotificationPortalProps> = ({ currentUser }) => {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const { canCreateNotifications, canDeleteNotifications, canExportData } = currentUser.permissions;
 
   // Load from DB
   useEffect(() => {
@@ -249,8 +250,8 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ currentUser, ca
           </div>
         </div>
         <div className="flex items-center gap-2">
-           {/* Export Logs Button for Admin/Super Admin */}
-           {canCreate && (
+           {/* Export Logs Button */}
+           {canExportData && (
             <button 
               onClick={handleExportLogs}
               className="flex items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg transition-colors shadow-sm text-sm"
@@ -260,7 +261,7 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ currentUser, ca
               Export Log
             </button>
            )}
-           {canCreate && (
+           {canCreateNotifications && (
             <button 
               onClick={() => { resetForm(); setShowForm(true); }}
               className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors shadow-sm text-sm"
@@ -498,19 +499,19 @@ const NotificationPortal: React.FC<NotificationPortalProps> = ({ currentUser, ca
                     className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Download Report">
                     <Download className="w-5 h-5" />
                   </button>
-                  {canCreate && (
-                    <>
-                      <button 
-                        onClick={() => handleEdit(notification)}
-                        className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Edit Notification">
-                        <Edit className="w-5 h-5" />
-                      </button>
+                  {canCreateNotifications && (
+                    <button 
+                      onClick={() => handleEdit(notification)}
+                      className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Edit Notification">
+                      <Edit className="w-5 h-5" />
+                    </button>
+                  )}
+                  {canDeleteNotifications && (
                       <button 
                         onClick={() => handleDelete(notification.id)}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete Notification">
                         <Trash2 className="w-5 h-5" />
                       </button>
-                    </>
                   )}
                 </div>
               </div>
